@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#444444">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SEM">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>SEM – Straßenerhaltungsmanagement</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+body{font-family:Arial;background:#e3e3e3;margin:0;padding:15px}
+h1{text-align:center}
+h2{margin-top:25px;border-bottom:2px solid #bbb}
+form{background:#f0f0f0;padding:20px;border-radius:8px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px}
+.form-field{display:flex;flex-direction:column}
+label{font-size:13px;font-weight:bold}
+input,select,textarea{padding:7px;font-size:14px}
+textarea{resize:vertical}
+button{background:#444;color:#fff;border:none;padding:10px;margin:5px 5px 5px 0;cursor:pointer}
+button:hover{background:#222}
+.flyout{background:#ddd;padding:10px;border-radius:6px}
+.note-1,.note-2{background:#b6e6b6}
+.note-3,.note-4{background:#fff2a8}
+.note-5,.note-6{background:#f4b6b6}
+table{width:100%;background:#fff;border-collapse:collapse;margin-top:15px;font-size:12px}
+th,td{border:1px solid #ccc;padding:6px;white-space:pre-wrap;vertical-align:top}
+td[contenteditable]{background:#fff8cc}
+td button{background:#a00;color:#fff;border:none;padding:4px 6px}
+#search{margin-bottom:10px;padding:6px;width:300px;font-size:14px}
+</style>
+</head>
+
+<body>
+
+<h1>SEM – Straßenerhaltungsmanagement</h1>
+
+<form id="form">
+
+<!-- ================= 1. GRUNDDATEN ================= -->
+<h2>1. Grunddaten</h2>
+<div class="form-grid">
+  <div class="form-field"><label>Straßenname</label><input id="strasse"></div>
+  <div class="form-field"><label>Straßenabschnitt</label><input id="abschnitt"></div>
+  <div class="form-field"><label>Datum</label><input type="date" id="datum"></div>
+  <div class="form-field">
+    <label>Gemeinde</label>
+    <select id="gemeinde">
+      <option></option>
+      <option>Twistringen</option>
+      <option>Scharrendorf</option>
+      <option>Borwede</option>
+      <option>Marhorst</option>
+      <option>Mörsen</option>
+    </select>
+  </div>
+  <div class="form-field"><label>Erfasser</label><input id="erfasser" value="B. Rohlfs"></div>
+</div>
+
+<!-- ================= 2. ZUSTANDSBEWERTUNG ================= -->
+<h2>2. Zustandsbewertung</h2>
+<div class="form-grid">
+  <div class="form-field">
+    <label>Oberfläche & Schäden</label>
+    <select id="os"><option></option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+  </div>
+  <div class="form-field">
+    <label>Ebenheit & Profil</label>
+    <select id="ep"><option></option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+  </div>
+  <div class="form-field">
+    <label>Bedeutung im Netz</label>
+    <select id="bn"><option></option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+  </div>
+  <div class="form-field">
+    <label>Gesamtnote</label>
+    <input id="gesamt" readonly>
+  </div>
+</div>
+
+<!-- ================= 3. OBERFLÄCHEN ================= -->
+<h2>3. Oberflächenbefestigung</h2>
+<div class="form-grid">
+  <div class="form-field">
+    <label>Fahrbahn</label>
+    <select id="fahrbahn">
+      <option></option><option>Asphalt</option><option>Pflaster</option>
+      <option>Schotter</option><option>Grasnarbe</option><option>Betonstreifen</option>
+    </select>
+  </div>
+  <div class="form-field">
+    <label>Geh-/Radweg</label>
+    <select id="gehweg">
+      <option></option><option>Asphalt</option><option>Pflaster</option>
+      <option>Schotter</option><option>Grasnarbe</option><option>Betonstreifen</option>
+    </select>
+  </div>
+</div>
+
+<!-- ================= 4. OPTIONALE MERKMALE ================= -->
+<h2>4. Zusätzliche Merkmale</h2>
+<div class="flyout">
+  <label><input type="checkbox" value="DSK empfohlen"> DSK empfohlen</label><br>
+  <label><input type="checkbox" value="Rissebehandlung empfohlen"> Rissebehandlung empfohlen</label><br>
+  <label><input type="checkbox" value="Oberflächenbehandlung empfohlen"> Oberflächenbehandlung empfohlen</label><br>
+  <label><input type="checkbox" value="Rinne vorhanden"> Rinne vorhanden</label><br>
+  <label><input type="checkbox" value="Bindemittelverlust"> Bindemittelverlust</label><br>
+  <label><input type="checkbox" value="Seitenraum versiegelt"> Seitenraum versiegelt</label><br>
+  <label><input type="checkbox" value="Schäden durch Baumwurzeln"> Schäden durch Baumwurzeln</label>
+</div>
+
+<!-- ================= 5. FREITEXT ================= -->
+<h2>5. Freitext</h2>
+<div class="form-field">
+  <label>Bemerkungen</label>
+  <textarea id="freitext" maxlength="1000"></textarea>
+</div>
+
+<!-- ================= 6. GPS ================= -->
+<h2>6. GPS-Erfassung</h2>
+<button type="button" onclick="startGPS()">GPS Start</button>
+<button type="button" onclick="stopGPS()">GPS Ende</button>
+
+<div class="form-field" style="max-width:200px">
+  <label>Streckenlänge</label>
+  <input id="strecke" readonly>
+</div>
+
+<!-- ================= 7. AKTIONEN ================= -->
+<h2>7. Aktionen</h2>
+<button type="button" onclick="save()">Datensatz speichern</button>
+<button type="button" onclick="exportXLSX()">Export XLSX</button>
+<button type="button" onclick="exportGeo()">Export GeoJSON</button>
+
+</form>
+
+<h2>Kartenansicht</h2>
+<div id="map" style="height:400px;border-radius:8px"></div>
+
+<h2>Gespeicherte Datensätze</h2>
+<input type="text" id="search" placeholder="Suche nach Straße oder Gemeinde..." oninput="render()">
+<button type="button" onclick="toggleEdit()">Bearbeiten</button>
+
+<table>
+<thead>
+<tr>
+<th>Löschen</th>
+<th>ID</th>
+<th>Straße</th>
+<th>Abschnitt</th>
+<th>Datum</th>
+<th>Gemeinde</th>
+<th>Erfasser</th>
+<th>OS</th>
+<th>EP</th>
+<th>BN</th>
+<th>Gesamt</th>
+<th>Fahrbahn</th>
+<th>Gehweg</th>
+<th>Optionen</th>
+<th>Freitext</th>
+<th>Lon</th>
+<th>Lat</th>
+<th>Länge (km)</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<script>
+let gps=[], watchId=null, trackLength=0, centered=false;
+let data=JSON.parse(localStorage.getItem("SEM"))||[];
+let editMode=false;
+datum.valueAsDate=new Date();
+
+/* ===== KARTE ===== */
+let map=L.map("map");
+let layer=L.layerGroup().addTo(map);
+let marker=null;
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+navigator.geolocation.getCurrentPosition(
+  p=>map.setView([p.coords.latitude,p.coords.longitude],17),
+  ()=>map.setView([52.7,8.6],13)
+);
+
+/* ===== DISTANZ ===== */
+function distance(lat1,lon1,lat2,lon2){
+  const R=6371000,toRad=x=>x*Math.PI/180;
+  const dLat=toRad(lat2-lat1),dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2+
+    Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+/* ===== GPS ===== */
+function startGPS(){
+  if(watchId)return;
+  gps=[];trackLength=0;centered=false;layer.clearLayers();strecke.value="";
+  watchId=navigator.geolocation.watchPosition(p=>{
+    const lat=p.coords.latitude,lon=p.coords.longitude;
+    if(gps.length){
+      const last=gps[gps.length-1];
+      trackLength+=distance(last[1],last[0],lat,lon);
+    }
+    gps.push([lon,lat]);
+    if(!centered){map.setView([lat,lon],18);centered=true;}
+    marker?marker.setLatLng([lat,lon]):marker=L.marker([lat,lon]).addTo(map);
+    layer.clearLayers();
+    L.polyline(gps.map(p=>[p[1],p[0]]),{color:"red",weight:4}).addTo(layer);
+    strecke.value=(trackLength/1000).toFixed(3)+" km";
+  },e=>alert(e.message),{enableHighAccuracy:true});
+}
+function stopGPS(){if(watchId){navigator.geolocation.clearWatch(watchId);watchId=null;}}
+
+/* ===== NOTE ===== */
+function calc(){
+  let a=+os.value,b=+ep.value,c=+bn.value;
+  if(!a||!b||!c){gesamt.value="";gesamt.className="";return;}
+  let g=(a*0.6+b*0.35+c*0.05).toFixed(2);
+  gesamt.value=g;gesamt.className="note-"+Math.round(g);
+}
+os.onchange=ep.onchange=bn.onchange=calc;
+
+/* ===== SPEICHERN ===== */
+function save(){
+  if(!gps.length)return alert("Keine GPS-Daten");
+  let last=gps[gps.length-1];
+  let opts=[...document.querySelectorAll(".flyout input:checked")].map(o=>o.value).join("\n");
+
+  data.push({
+    id:Date.now(),
+    strasse:strasse.value,abschnitt:abschnitt.value,datum:datum.value,
+    gemeinde:gemeinde.value,erfasser:erfasser.value,
+    os:os.value,ep:ep.value,bn:bn.value,gesamt:gesamt.value,
+    fahrbahn:fahrbahn.value,gehweg:gehweg.value,
+    lon:last[0],lat:last[1],
+    strecke_km:(trackLength/1000).toFixed(3),
+    optionen:opts,freitext:freitext.value,
+    gps
+  });
+  localStorage.setItem("SEM",JSON.stringify(data));
+  form.reset();datum.valueAsDate=new Date();strecke.value="";calc();
+  render();
+}
+
+/* ===== UPDATE ===== */
+function update(i,key,el){
+  data[i][key]=el.innerText.trim();
+  localStorage.setItem("SEM",JSON.stringify(data));
+}
+
+/* ===== LÖSCHEN ===== */
+function del(i){
+  if(confirm("Datensatz wirklich löschen?")){
+    data.splice(i,1);
+    localStorage.setItem("SEM",JSON.stringify(data));
+    render();
+  }
+}
+
+/* ===== RENDER TABELLE ===== */
+function render(){
+  let q=document.getElementById("search").value.toLowerCase();
+  tbody.innerHTML="";
+  data.forEach((d,i)=>{
+    if(!q || d.strasse.toLowerCase().includes(q) || d.gemeinde.toLowerCase().includes(q)){
+      tbody.innerHTML+=`
+      <tr data-i="${i}">
+        <td><button onclick="del(${i})">X</button></td>
+        <td>${d.id||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'strasse\',this)"':''}>${d.strasse||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'abschnitt\',this)"':''}>${d.abschnitt||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'datum\',this)"':''}>${d.datum||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'gemeinde\',this)"':''}>${d.gemeinde||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'erfasser\',this)"':''}>${d.erfasser||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'os\',this)"':''}>${d.os||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'ep\',this)"':''}>${d.ep||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'bn\',this)"':''}>${d.bn||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'gesamt\',this)"':''}>${d.gesamt||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'fahrbahn\',this)"':''}>${d.fahrbahn||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'gehweg\',this)"':''}>${d.gehweg||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'optionen\',this)"':''}>${d.optionen||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'freitext\',this)"':''}>${d.freitext||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'lon\',this)"':''}>${d.lon||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'lat\',this)"':''}>${d.lat||""}</td>
+        <td ${editMode?'contenteditable onblur="update('+i+',\'strecke_km\',this)"':''}>${d.strecke_km||""}</td>
+      </tr>`;
+    }
+  });
+}
+
+/* ===== TOGGLE EDIT ===== */
+function toggleEdit(){
+  editMode=!editMode;
+  render();
+}
+
+/* ===== EXPORT ===== */
+function exportXLSX(){
+  let wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),"SEM");
+  XLSX.writeFile(wb,"SEM_Strassendaten.xlsx");
+}
+function exportGeo(){
+  let geo={type:"FeatureCollection",features:data.map(d=>({
+    type:"Feature",
+    geometry:{type:"LineString",coordinates:d.gps},
+    properties:d
+  }))};
+  let a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(geo)],{type:"application/json"}));
+  a.download="SEM_Strassendaten.geojson";a.click();
+}
+
+render();
+
+/* ===== PWA: SERVICE WORKER REGISTRIEREN ===== */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("sw.js").catch(err=>console.warn("SW-Registrierung fehlgeschlagen:",err));
+  });
+}
+</script>
+
+</body>
+</html>
